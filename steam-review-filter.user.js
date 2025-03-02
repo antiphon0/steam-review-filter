@@ -66,23 +66,42 @@ function filterCards(keyword)
   });
 };
 
-function filterCard(element, keyword)
-{
-  keyword = keyword == filterKeywordBlank ? '' : keyword;
+function filterCard(element, keyword) {
+  if (!element.classList.contains('apphub_Card')) return;
 
-  if (element.classList.contains('apphub_Card'))
-  {
-    let cardTextContent = element.getElementsByClassName('apphub_CardTextContent')[0];
-    let expression = new RegExp(keyword, 'i')
-    let show = !keyword || expression.match(cardTextContent.innerText);
+  let cardTextContent = element.getElementsByClassName('apphub_CardTextContent')[0];
+  if (!cardTextContent) return;
 
-    element.classList.remove('apphub_Card_hidden');
-    if (!show)
-    {
-      element.classList.add('apphub_Card_hidden');
+  let text = cardTextContent.innerText.toLowerCase();
+  let terms = keyword.split(/\s+/); // Split input by spaces
+  let includeTerms = [];
+  let excludeTerms = [];
+
+  // Separate include and exclude terms
+  terms.forEach(term => {
+    if (term.startsWith('!')) {
+      excludeTerms.push(term.substring(1).toLowerCase()); // Remove '!' and store
+    } else {
+      includeTerms.push(term.toLowerCase());
     }
+  });
+
+  let show = true;
+
+  // Include filter: At least one include term must match (if specified)
+  if (includeTerms.length > 0) {
+    show = includeTerms.some(term => text.includes(term));
   }
-};
+
+  // Exclude filter: Hide if any exclude term is found
+  if (excludeTerms.some(term => text.includes(term))) {
+    show = false;
+  }
+
+  // Show or hide the review
+  element.classList.toggle('apphub_Card_hidden', !show);
+}
+
 
 // create input field
 let filterKeywordBlank = "enter search term";
