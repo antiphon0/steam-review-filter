@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name          Steam review keyword filter
-// @author        Tobias Bindel
+// @name          Steam review keyword filter (Enhanced)
+// @author        Tobias Bindel (modified)
 // @license       MIT
-// @version       1.0
-// @description   This user script allows you to filter the list of Steam reviews by a keyword.
+// @version       1.2
+// @description   Allows filtering Steam reviews by keyword, supports exclusions (!keyword), and regex expressions.
 // @homepageURL   https://github.com/ImJezze/steam-review-filter.git
 // @match         https://steamcommunity.com/app/*/*reviews/*
 // @require       https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.slim.min.js
@@ -11,12 +11,8 @@
 // @run-at        document-end
 // ==/UserScript==
 
-var observer = new window.MutationObserver(function(mutations, observer)
-{
-  mutations.forEach(e =>
-  {
-    filterCardRow(e.target);
-  });
+var observer = new MutationObserver(function(mutations) {
+  mutations.forEach(e => filterCardRow(e.target));
 });
 
 observer.observe(document.getElementById('AppHubCards'), {
@@ -26,45 +22,32 @@ observer.observe(document.getElementById('AppHubCards'), {
   characterData: false,
 });
 
-function filterCardRow(element)
-{
+function filterCardRow(element) {
   let term = document.getElementById('term');
-
-  if (element.classList.contains('apphub_CardRow'))
-  {
+  if (element.classList.contains('apphub_CardRow')) {
     let cards = element.getElementsByClassName('apphub_Card');
-    Array.from(cards).forEach(e =>
-    {
-      // make all cards the same size (alligned in two columns)
+    Array.from(cards).forEach(e => {
       $(e).css('width', '460px');
       $(e).css('height', '400px');
 
       let content = element.getElementsByClassName('apphub_CardContentMain')[0];
       $(content).css('height', '350px');
 
-      // add card directly into the page
       element.parentNode.insertBefore(e, null);
-
       filterCard(e, term.value);
     });
 
-    // remove card row
-    if (element.parentNode)
-    {
+    if (element.parentNode) {
       element.parentNode.removeChild(element);
     }
   }
 }
 
-function filterCards(keyword)
-{
+function filterCards() {
   let term = document.getElementById('term');
   let cards = document.getElementsByClassName('apphub_Card');
-  Array.from(cards).forEach(e =>
-  {
-    filterCard(e, term.value);
-  });
-};
+  Array.from(cards).forEach(e => filterCard(e, term.value));
+}
 
 function filterCard(element, keyword) {
   if (!element.classList.contains('apphub_Card')) return;
@@ -73,88 +56,78 @@ function filterCard(element, keyword) {
   if (!cardTextContent) return;
 
   let text = cardTextContent.innerText.toLowerCase();
-  let terms = keyword.split(/\s+/); // Split input by spaces
-  let includeTerms = [];
-  let excludeTerms = [];
+  let terms = keyword.split(/\s+/);
+  let includePatterns = [];
+  let excludePatterns = [];
 
-  // Separate include and exclude terms
+  // Separate inclusion & exclusion patterns
   terms.forEach(term => {
     if (term.startsWith('!')) {
-      excludeTerms.push(term.substring(1).toLowerCase()); // Remove '!' and store
+      excludePatterns.push(term.substring(1));
     } else {
-      includeTerms.push(term.toLowerCase());
+      includePatterns.push(term);
     }
   });
 
+  let includeRegex = includePatterns.length ? new RegExp(includePatterns.join('|'), 'i') : null;
+  let excludeRegex = excludePatterns.length ? new RegExp(excludePatterns.join('|'), 'i') : null;
+
   let show = true;
 
-  // Include filter: At least one include term must match (if specified)
-  if (includeTerms.length > 0) {
-    show = includeTerms.some(term => text.includes(term));
-  }
-
-  // Exclude filter: Hide if any exclude term is found
-  if (excludeTerms.some(term => text.includes(term))) {
+  // Include filter: At least one pattern must match (if specified)
+  if (includeRegex && !includeRegex.test(text)) {
     show = false;
   }
 
-  // Show or hide the review
+  // Exclude filter: Hide if any exclude pattern matches
+  if (excludeRegex && excludeRegex.test(text)) {
+    show = false;
+  }
+
   element.classList.toggle('apphub_Card_hidden', !show);
 }
 
-
-// create input field
+// Create input field
 let filterKeywordBlank = "enter search term";
 let filterKeywordInput = document.createElement("input");
 filterKeywordInput.type = "text";
-filterKeywordInput.class = "text";
+filterKeywordInput.className = "text";
 filterKeywordInput.id = "term";
 filterKeywordInput.onfocus = function() {
-  if (this.value == filterKeywordBlank)
-  {
+  if (this.value == filterKeywordBlank) {
     this.value = '';
   }
 };
-filterKeywordInput.onchange = function() {
-  filterCards();
-};
+filterKeywordInput.onchange = filterCards;
 filterKeywordInput.onblur = function() {
-  if (this.value == '')
-  {
+  if (this.value == '') {
     this.value = filterKeywordBlank;
   }
 };
 filterKeywordInput.value = filterKeywordBlank;
 filterKeywordInput.autocomplete = "off";
 
-// add input field
+// Add input field
 var sectionFilter = document.getElementsByClassName('apphub_SectionFilter')[0];
-sectionFilter.insertBefore(filterKeywordInput, null);
+if (sectionFilter) {
+  sectionFilter.insertBefore(filterKeywordInput, null);
+}
 
-// add custom styles
+// Add custom styles
 let steamCSS = `
-  /* hide labels */
   .apphub_SectionFilterLabel {
     display: none;
   }
-
-  /* hide 'about reviews' button */
   .learnMore {
     display: none;
   }
-
-  /* hide reviews */
   .apphub_Card_hidden {
     display: none;
   }
-
-  /* resize language field */
   #filterlanguage {
     width: auto;
     min-width: 150px;
   }
-
-  /* resize input field */
   #term {
     height: 22px;
     width: 340px;
