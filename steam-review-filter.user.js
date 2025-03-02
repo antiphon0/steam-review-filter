@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name          Steam review keyword filter (Enhanced)
-// @author        Tobias Bindel (modified)
+// @name          Steam review keyword filter
+// @author        Tobias Bindel
 // @license       MIT
 // @version       1.2
 // @description   Allows filtering Steam reviews by keyword, supports exclusions (!keyword), and regex expressions.
